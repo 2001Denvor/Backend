@@ -20,7 +20,7 @@ var app = builder.Build();
 
 app.UseCors("AllowReactApp"); // ✅ Must be before MapControllers()
 
-app.UseHttpsRedirection();
+
 app.UseAuthorization();
 
 app.MapControllers();
