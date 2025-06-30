@@ -1,10 +1,11 @@
-// Models/User.cs
 namespace MyBackend.Models
 {
     public class User
     {
-        public string? Email { get; set; }
-        public string? Password { get; set; }  // Plain text for simplicity; hash in production
-        public string? Role { get; set; }
+        public int Id { get; set; }
+        public string FullName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string PasswordHash { get; set; } = "";
+        public string Role { get; set; } = "user";
     }
 }

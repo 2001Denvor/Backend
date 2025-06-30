@@ -1,7 +1,9 @@
-using Microsoft.AspNetCore.Mvc;                  // ✅ Needed for ControllerBase, IActionResult, [HttpPost], etc.
-using MyBackend.Models;                         // ✅ Adjust if your LoginRequest is elsewhere
-using MyBackend.Services;                       // ✅ Adjust for your AuthService
-using System;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using MyBackend.Data;
+using MyBackend.Models;
+using System.Threading.Tasks;
 
 namespace MyBackend.Controllers
 {
@@ -9,36 +11,48 @@ namespace MyBackend.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AuthService _authService;
+        private readonly AppDbContext _context;
+        private readonly IPasswordHasher<User> _passwordHasher;
 
-        public AuthController(AuthService authService)
+        public AuthController(AppDbContext context, IPasswordHasher<User> passwordHasher)
         {
-            _authService = authService;
+            _context = context;
+            _passwordHasher = passwordHasher;
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest model)
+        {
+            if (await _context.Users.AnyAsync(u => u.Email == model.Email))
+                return BadRequest(new { error = "User already exists" });
+
+            var user = new User
+            {
+                FullName = model.FullName,
+                Email = model.Email,
+                Role = string.IsNullOrEmpty(model.Role) ? "user" : model.Role.ToLower()
+            };
+
+            user.PasswordHash = _passwordHasher.HashPassword(user, model.Password);
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { user.Id, user.Email, user.FullName, user.Role });
         }
 
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+        public async Task<IActionResult> Login([FromBody] LoginRequest model)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-                {
-                    return BadRequest(new { error = "Email and password are required." });
-                }
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+            if (user == null)
+                return BadRequest(new { error = "Invalid email or password" });
 
-                var user = _authService.Authenticate(request.Email, request.Password);
-                if (user == null)
-                {
-                    return Unauthorized(new { error = "Invalid credentials" });
-                }
+            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, model.Password);
+            if (result == PasswordVerificationResult.Failed)
+                return BadRequest(new { error = "Invalid email or password" });
 
-                return Ok(new { email = user.Email, role = user.Role });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Login exception: " + ex.Message);
-                return StatusCode(500, new { error = "Internal server error" });
-            }
+            return Ok(new { user.Id, user.Email, user.FullName, user.Role });
         }
     }
 }

@@ -1,25 +1,45 @@
-using MyBackend.Models; // for LoginRequest or User
+using Microsoft.AspNetCore.Identity;
+using MyBackend.Models;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MyBackend.Services
 {
     public class AuthService
     {
-        // Dummy user list — replace with real database access
-        private List<User> _users = new List<User>
+        private readonly IPasswordHasher<User> _passwordHasher;
+
+        private List<User> _users;
+
+        public AuthService()
         {
-            new User { Email = "admin@example.com", Password = "admin123", Role = "admin" },
-            new User { Email = "user@example.com", Password = "user123", Role = "user" }
-        };
+            _passwordHasher = new PasswordHasher<User>();
+
+            // Dummy users with hashed passwords
+            var admin = new User { Email = "admin@example.com", Role = "admin" };
+            admin.PasswordHash = _passwordHasher.HashPassword(admin, "admin123");
+
+            var user = new User { Email = "user@example.com", Role = "user" };
+            user.PasswordHash = _passwordHasher.HashPassword(user, "user123");
+
+            _users = new List<User> { admin, user };
+        }
 
         public User? Authenticate(string email, string password)
         {
-            // In real apps, hash the password and compare
-            return _users.FirstOrDefault(u =>
-                string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase) &&
-                u.Password == password
-            );
+            var user = _users.FirstOrDefault(u =>
+                string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
 
+            if (user == null)
+                return null;
+
+            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
+
+            if (result == PasswordVerificationResult.Success)
+                return user;
+
+            return null;
         }
     }
 }
