@@ -34,6 +34,10 @@ namespace MyBackend.Services
             if (user == null)
                 return null;
 
+            // ✅ Check if PasswordHash is null before verifying
+            if (user.PasswordHash == null)
+                return null;
+
             var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
 
             if (result == PasswordVerificationResult.Success)

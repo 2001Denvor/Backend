@@ -1,12 +1,16 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using MyBackend.Models; // ✅ Important: so it knows what User is
+using MyBackend.Models;
 
 namespace MyBackend.Data
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : IdentityDbContext<User>
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options)
+        {
+        }
 
-        public DbSet<User> Users { get; set; }
+        // ✅ Remove any explicit ToTable("Users") if you added!
     }
 }
