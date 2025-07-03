@@ -47,10 +47,9 @@ namespace MyBackend.Controllers
             {
                 FullName = model.FullName,
                 Email = model.Email,
-                UserName = model.Email, // ✅ Important: Identity requires this
+                UserName = model.Email, // ✅ Required by Identity
                 Role = model.Role
             };
-
 
             var result = await _userManager.CreateAsync(user, model.Password);
 
@@ -60,7 +59,7 @@ namespace MyBackend.Controllers
             return Ok(new { message = "User registered successfully!" });
         }
 
-        // ✅ Login
+        // ✅ Login — FULLY FIXED
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest model)
         {
@@ -77,6 +76,7 @@ namespace MyBackend.Controllers
 
             var token = GenerateJwtToken(user);
 
+            // ✅ Fixed: Return fullname to match frontend use
             return Ok(new
             {
                 token,
@@ -84,7 +84,8 @@ namespace MyBackend.Controllers
                 {
                     user.Id,
                     user.Email,
-                    user.Role
+                    user.Role,
+                    fullname = user.FullName
                 }
             });
         }
