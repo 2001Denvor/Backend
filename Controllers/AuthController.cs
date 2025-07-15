@@ -105,7 +105,7 @@ namespace MyBackend.Controllers
 
             var emailEscaped = Uri.EscapeDataString(user.Email ?? string.Empty);
             var tokenEscaped = Uri.EscapeDataString(token);
-            var resetLink = $"http://localhost:5173/reset-password?email={emailEscaped}&token={tokenEscaped}";
+            var resetLink = $"https://localhost:5173/reset-password?email={emailEscaped}&token={tokenEscaped}";
 
             await _emailSender.SendEmailAsync(user.Email ?? string.Empty, "Reset Password",
                 $"<p>Click the link below to reset your password:</p><p><a href='{resetLink}'>Reset Password</a></p>");

@@ -9,6 +9,7 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ✅ Database connection
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -23,9 +24,7 @@ builder.Services.AddIdentityCore<User>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// ✅ Remove manual IPasswordHasher injection
-// builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>(); ← Removed
-
+// ✅ Email service
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 
 // ✅ Controllers
@@ -61,7 +60,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ✅ Authorization policies (optional, if you need roles)
+// ✅ Authorization policies (optional)
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
@@ -75,7 +74,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("https://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -83,13 +82,24 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// ✅ Developer exception page in development
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
 
+// ✅ Redirect HTTP to HTTPS
+app.UseHttpsRedirection();
+
+// ✅ Enable CORS
 app.UseCors("AllowReactApp");
+
+// ✅ Enable authentication & authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+// ✅ Map controllers
 app.MapControllers();
+
+// ✅ Run the app
 app.Run();
