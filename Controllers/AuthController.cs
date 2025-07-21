@@ -29,6 +29,13 @@ namespace MyBackend.Controllers
             _configuration = configuration;
         }
 
+        // Test endpoint to check if controller is working
+        [HttpGet("test")]
+        public IActionResult Test()
+        {
+            return Ok("AuthController is working!");
+        }
+
         // ✅ Register
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest model)
