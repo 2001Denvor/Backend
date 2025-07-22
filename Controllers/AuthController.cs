@@ -8,6 +8,8 @@ using MyBackend.DTOs;
 using MyBackend.Models;
 using MyBackend.Services;
 using Microsoft.Extensions.Configuration;
+using System;
+using System.Threading.Tasks;
 
 namespace MyBackend.Controllers
 {
@@ -29,32 +31,32 @@ namespace MyBackend.Controllers
             _configuration = configuration;
         }
 
-        // Test endpoint to check if controller is working
+        // Test endpoint
         [HttpGet("test")]
         public IActionResult Test()
         {
             return Ok("AuthController is working!");
         }
 
-        // ✅ Register
+        // Register
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest model)
         {
-            if (string.IsNullOrEmpty(model.Email))
+            if (string.IsNullOrWhiteSpace(model.Email))
                 return BadRequest(new { error = "Email is required." });
 
             var userExists = await _userManager.FindByEmailAsync(model.Email);
             if (userExists != null)
                 return BadRequest(new { error = "User already exists." });
 
-            if (string.IsNullOrEmpty(model.Password))
+            if (string.IsNullOrWhiteSpace(model.Password))
                 return BadRequest(new { error = "Password is required." });
 
             var user = new User
             {
                 FullName = model.FullName,
                 Email = model.Email,
-                UserName = model.Email, // ✅ Required by Identity
+                UserName = model.Email,
                 Role = model.Role
             };
 
@@ -66,11 +68,11 @@ namespace MyBackend.Controllers
             return Ok(new { message = "User registered successfully!" });
         }
 
-        // ✅ Login — FULLY FIXED
+        // Login
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest model)
         {
-            if (string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.Password))
+            if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
                 return Unauthorized(new { error = "Email and password are required." });
 
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -83,7 +85,6 @@ namespace MyBackend.Controllers
 
             var token = GenerateJwtToken(user);
 
-            // ✅ Fixed: Return fullname to match frontend use
             return Ok(new
             {
                 token,
@@ -97,11 +98,11 @@ namespace MyBackend.Controllers
             });
         }
 
-        // ✅ Forgot Password
+        // Forgot Password
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto model)
         {
-            if (string.IsNullOrEmpty(model.Email))
+            if (string.IsNullOrWhiteSpace(model.Email))
                 return BadRequest(new { error = "Email is required." });
 
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -111,7 +112,7 @@ namespace MyBackend.Controllers
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
             var emailEscaped = Uri.EscapeDataString(user.Email ?? string.Empty);
-            var tokenEscaped = Uri.EscapeDataString(token);
+            var tokenEscaped = Uri.EscapeDataString(token ?? string.Empty);
             var resetLink = $"https://localhost:5173/reset-password?email={emailEscaped}&token={tokenEscaped}";
 
             await _emailSender.SendEmailAsync(user.Email ?? string.Empty, "Reset Password",
@@ -120,11 +121,11 @@ namespace MyBackend.Controllers
             return Ok(new { message = "Password reset link sent to your email." });
         }
 
-        // ✅ Reset Password
+        // Reset Password
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto model)
         {
-            if (string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.NewPassword))
+            if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Token) || string.IsNullOrWhiteSpace(model.NewPassword))
                 return BadRequest(new { error = "Email, token, and new password are required." });
 
             var user = await _userManager.FindByEmailAsync(model.Email);
@@ -139,7 +140,7 @@ namespace MyBackend.Controllers
             return Ok(new { message = "Password has been reset successfully." });
         }
 
-        // ✅ Helper to generate JWT
+        // Helper: Generate JWT token
         private string GenerateJwtToken(User user)
         {
             var jwtKey = _configuration["Jwt:Key"];

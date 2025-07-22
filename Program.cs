@@ -33,7 +33,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
 });
 
-// ✅ JWT configuration
+// ✅ JWT & Auth0 values from config
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key is not configured.");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]
@@ -41,12 +41,30 @@ var jwtIssuer = builder.Configuration["Jwt:Issuer"]
 var jwtAudience = builder.Configuration["Jwt:Audience"]
     ?? throw new InvalidOperationException("JWT Audience is not configured.");
 
+var auth0Domain = builder.Configuration["Auth0:Domain"]
+    ?? throw new InvalidOperationException("Auth0 Domain is not configured.");
+var auth0Audience = builder.Configuration["Auth0:Audience"]
+    ?? throw new InvalidOperationException("Auth0 Audience is not configured.");
+
+// ✅ Multi-scheme authentication: JWT (local) + Auth0
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = "Combined";
 })
-.AddJwtBearer(options =>
+.AddPolicyScheme("Combined", "JWT or Auth0", options =>
+{
+    options.ForwardDefaultSelector = context =>
+    {
+        var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+        if (authHeader?.StartsWith("Bearer ") == true)
+        {
+            var token = authHeader.Substring("Bearer ".Length);
+            return token.Count(c => c == '.') == 2 ? "Auth0" : "Local";
+        }
+        return "Local";
+    };
+})
+.AddJwtBearer("Local", options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -58,9 +76,19 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
+})
+.AddJwtBearer("Auth0", options =>
+{
+    options.Authority = $"https://{auth0Domain}/";
+    options.Audience = auth0Audience;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        NameClaimType = "name", // Optional
+        RoleClaimType = "https://schemas.quickstarts.com/roles" // Optional
+    };
 });
 
-// ✅ Authorization policies (optional)
+// ✅ Authorization
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
@@ -69,37 +97,30 @@ builder.Services.AddAuthorization(options =>
     });
 });
 
-// ✅ CORS
+// ✅ CORS for React frontend
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("https://localhost:5173")
+        policy.WithOrigins("https://localhost:5173") // or http://localhost:5173
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// ✅ Developer exception page in development
+// ✅ Developer-friendly errors
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
 }
 
-// ✅ Redirect HTTP to HTTPS
+// ✅ Middleware
 app.UseHttpsRedirection();
-
-// ✅ Enable CORS
 app.UseCors("AllowReactApp");
-
-// ✅ Enable authentication & authorization
 app.UseAuthentication();
 app.UseAuthorization();
-
-// ✅ Map controllers
 app.MapControllers();
-
-// ✅ Run the app
 app.Run();

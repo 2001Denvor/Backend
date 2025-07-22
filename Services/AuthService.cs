@@ -6,17 +6,20 @@ using System.Linq;
 
 namespace MyBackend.Services
 {
-    public class AuthService
+    public interface IAuthService
+    {
+        User? Authenticate(string email, string password);
+    }
+
+    public class AuthService : IAuthService
     {
         private readonly IPasswordHasher<User> _passwordHasher;
-
-        private List<User> _users;
+        private readonly List<User> _users;
 
         public AuthService()
         {
             _passwordHasher = new PasswordHasher<User>();
 
-            // Dummy users with hashed passwords
             var admin = new User { Email = "admin@example.com", Role = "admin" };
             admin.PasswordHash = _passwordHasher.HashPassword(admin, "admin123");
 
@@ -28,22 +31,18 @@ namespace MyBackend.Services
 
         public User? Authenticate(string email, string password)
         {
+            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                return null;
+
             var user = _users.FirstOrDefault(u =>
                 string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase));
 
-            if (user == null)
+            if (user == null || string.IsNullOrEmpty(user.PasswordHash))
                 return null;
 
-            // ✅ Check if PasswordHash is null before verifying
-            if (user.PasswordHash == null)
-                return null;
+            var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
 
-            var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, password);
-
-            if (result == PasswordVerificationResult.Success)
-                return user;
-
-            return null;
+            return verificationResult == PasswordVerificationResult.Success ? user : null;
         }
     }
 }

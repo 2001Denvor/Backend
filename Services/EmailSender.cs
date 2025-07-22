@@ -11,21 +11,21 @@ namespace MyBackend.Services
 
     public class EmailSender : IEmailSender
     {
-        private readonly string _smtpHost = "smtp.gmail.com"; // ✅ Correct host for Gmail
-        private readonly int _smtpPort = 587;                 // ✅ Correct port (587 for TLS/STARTTLS)
-        private readonly string _smtpUser = "your-email@gmail.com"; // ⚠️ Must replace with actual Gmail
-        private readonly string _smtpPass = "your-app-password";    // ⚠️ Must replace with actual app password
+        private readonly string _smtpHost = "smtp.gmail.com";      // Gmail SMTP
+        private readonly int _smtpPort = 587;                       // TLS port
+        private readonly string _smtpUser = "your-email@gmail.com"; // Replace with actual
+        private readonly string _smtpPass = "your-app-password";    // Replace with actual
 
         public async Task SendEmailAsync(string toEmail, string subject, string htmlMessage)
         {
-            var client = new SmtpClient(_smtpHost)
+            using var client = new SmtpClient(_smtpHost)
             {
                 Port = _smtpPort,
                 Credentials = new NetworkCredential(_smtpUser, _smtpPass),
-                EnableSsl = true,      // ✅ Enable SSL/TLS
+                EnableSsl = true,
             };
 
-            var mailMessage = new MailMessage
+            using var mailMessage = new MailMessage
             {
                 From = new MailAddress(_smtpUser),
                 Subject = subject,
