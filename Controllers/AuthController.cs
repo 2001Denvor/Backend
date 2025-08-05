@@ -154,7 +154,8 @@ namespace MyBackend.Controllers
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email ?? string.Empty),
                 new Claim("id", user.Id?.ToString() ?? string.Empty),
-                new Claim("role", user.Role ?? "user")
+                new Claim("role", user.Role ?? "user"),
+                new Claim("fullname", user.FullName ?? "") // Added fullname claim here
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
